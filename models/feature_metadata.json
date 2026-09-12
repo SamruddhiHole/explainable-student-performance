@@ -1,0 +1,28 @@
+{
+  "feature_names": [
+    "Attendance_Percentage",
+    "Study_Hours",
+    "Previous_Marks",
+    "Assignment_Score",
+    "Internal_Assessment_Marks",
+    "Completed_Assignments",
+    "Academic_Participation"
+  ],
+  "target_names": [
+    "Low",
+    "Medium",
+    "High"
+  ],
+  "category_mapping": {
+    "Low": 0,
+    "Medium": 1,
+    "High": 2
+  },
+  "reverse_category_mapping": {
+    "0": "Low",
+    "1": "Medium",
+    "2": "High"
+  },
+  "train_size": 768,
+  "test_size": 192
+}
