@@ -14,6 +14,12 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
+try:
+    import statsmodels.api
+    STATSMODELS_AVAILABLE = True
+except ImportError:
+    STATSMODELS_AVAILABLE = False
+
 CATEGORY_COLORS = {
     "Low": "#ef4444",     # Red
     "Medium": "#eab308",  # Amber/Yellow
@@ -57,7 +63,7 @@ def plot_attendance_vs_score(df: pd.DataFrame) -> go.Figure:
         y="Final_Score" if "Final_Score" in df.columns else "Previous_Marks",
         color="Performance_Category",
         color_discrete_map=CATEGORY_COLORS,
-        trendline="ols",
+        trendline="ols" if STATSMODELS_AVAILABLE else None,
         hover_data=["Student_ID", "Study_Hours", "Previous_Marks"] if "Student_ID" in df.columns else None,
         title="Class Attendance (%) vs Final Score"
     )
@@ -78,7 +84,7 @@ def plot_study_hours_vs_score(df: pd.DataFrame) -> go.Figure:
         y="Final_Score" if "Final_Score" in df.columns else "Previous_Marks",
         color="Performance_Category",
         color_discrete_map=CATEGORY_COLORS,
-        trendline="ols",
+        trendline="ols" if STATSMODELS_AVAILABLE else None,
         hover_data=["Student_ID", "Attendance_Percentage"] if "Student_ID" in df.columns else None,
         title="Weekly Study Hours vs Final Score"
     )
@@ -99,7 +105,7 @@ def plot_previous_marks_vs_score(df: pd.DataFrame) -> go.Figure:
         y="Final_Score" if "Final_Score" in df.columns else "Assignment_Score",
         color="Performance_Category",
         color_discrete_map=CATEGORY_COLORS,
-        trendline="ols",
+        trendline="ols" if STATSMODELS_AVAILABLE else None,
         hover_data=["Student_ID"] if "Student_ID" in df.columns else None,
         title="Previous Semester Marks (%) vs Final Score"
     )
