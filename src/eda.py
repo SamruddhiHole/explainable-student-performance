@@ -347,3 +347,115 @@ def plot_assignments_vs_internals(df: pd.DataFrame) -> go.Figure:
     )
     return fig
 
+
+def plot_attendance_tiers_success_rate(df: pd.DataFrame) -> go.Figure:
+    """
+    Renders an intuitive 100% stacked bar chart showing how different attendance tiers
+    directly correspond to the likelihood of Low, Medium, or High performance.
+    """
+    df_temp = df.copy()
+
+    def get_tier(att):
+        if att < 60:
+            return "1. Critical (<60%)"
+        elif att < 75:
+            return "2. Warning (60-74%)"
+        elif att < 85:
+            return "3. Good (75-84%)"
+        else:
+            return "4. Excellent (≥85%)"
+
+    df_temp["Attendance_Tier"] = df_temp["Attendance_Percentage"].apply(get_tier)
+
+    tier_order = ["1. Critical (<60%)", "2. Warning (60-74%)", "3. Good (75-84%)", "4. Excellent (≥85%)"]
+    pivot = pd.crosstab(df_temp["Attendance_Tier"], df_temp["Performance_Category"], normalize="index") * 100
+    pivot = pivot.reindex(tier_order).fillna(0)
+
+    fig = go.Figure()
+    for cat in ["Low", "Medium", "High"]:
+        if cat in pivot.columns:
+            fig.add_trace(go.Bar(
+                name=f"{cat} Standing",
+                x=pivot.index,
+                y=pivot[cat].round(1),
+                text=pivot[cat].apply(lambda v: f"{v:.1f}%" if v > 3 else ""),
+                textposition="inside",
+                marker_color=CATEGORY_COLORS.get(cat, "#3b82f6")
+            ))
+
+    fig.update_layout(
+        barmode="stack",
+        title="Attendance Threshold vs Outcome Probability (100% Stacked)",
+        xaxis_title="Attendance Bracket",
+        yaxis_title="Proportion of Students (%)",
+        template="plotly_white",
+        height=380,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    return fig
+
+
+def plot_study_vs_attendance_quadrant(df: pd.DataFrame) -> go.Figure:
+    """
+    Renders a 4-Quadrant Scatter Plot of Weekly Study Hours vs Class Attendance.
+    Highlights the 4 distinct behavioral student profiles.
+    """
+    median_att = 75.0
+    median_study = 14.0
+
+    fig = px.scatter(
+        df,
+        x="Attendance_Percentage",
+        y="Study_Hours",
+        color="Performance_Category",
+        color_discrete_map=CATEGORY_COLORS,
+        hover_data=["Student_ID", "Final_Score"] if "Student_ID" in df.columns else None,
+        title="Student Behavioral Quadrant (Attendance vs Weekly Study Hours)"
+    )
+
+    # Add quadrant dividing lines
+    fig.add_vline(x=median_att, line_dash="dash", line_color="#9ca3af", annotation_text="75% Attendance", annotation_position="top left")
+    fig.add_hline(y=median_study, line_dash="dash", line_color="#9ca3af", annotation_text="14 hrs Study", annotation_position="bottom right")
+
+    # Add Quadrant background annotations
+    fig.add_annotation(x=90, y=28, text="🌟 High Attendance & High Study", showarrow=False, font=dict(size=11, color="#15803d"))
+    fig.add_annotation(x=50, y=28, text="📖 Independent Study / Low Attendance", showarrow=False, font=dict(size=11, color="#854d0e"))
+    fig.add_annotation(x=90, y=6, text="🏫 Regular Attendance / Low Study", showarrow=False, font=dict(size=11, color="#1d4ed8"))
+    fig.add_annotation(x=50, y=6, text="⚠️ At-Risk Zone (Low Effort)", showarrow=False, font=dict(size=11, color="#b91c1c"))
+
+    fig.update_layout(
+        xaxis_title="Class Attendance Percentage (%)",
+        yaxis_title="Weekly Self-Study Hours (hrs)",
+        template="plotly_white",
+        height=450
+    )
+    return fig
+
+
+def plot_interactive_custom_explorer(df: pd.DataFrame, x_col: str, y_col: str) -> go.Figure:
+    """
+    Allows the user to select any two features and calculates Pearson correlation r dynamically.
+    """
+    x_clean = x_col.replace("_", " ")
+    y_clean = y_col.replace("_", " ")
+
+    fig = px.scatter(
+        df,
+        x=x_col,
+        y=y_col,
+        color="Performance_Category",
+        color_discrete_map=CATEGORY_COLORS,
+        trendline="ols" if STATSMODELS_AVAILABLE else None,
+        hover_data=["Student_ID"] if "Student_ID" in df.columns else None,
+        title=f"Custom Correlation Explorer: {x_clean} vs {y_clean}"
+    )
+
+    fig.update_layout(
+        xaxis_title=x_clean,
+        yaxis_title=y_clean,
+        template="plotly_white",
+        height=420
+    )
+    return fig
+
+
