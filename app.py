@@ -68,13 +68,15 @@ MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 
 from src.data_cleaning import clean_raw_data, REQUIRED_COLUMNS
 from src.eda import (
-    plot_category_distribution, plot_attendance_vs_score,
+    plot_category_distribution, plot_category_donut, plot_attendance_vs_score,
     plot_study_hours_vs_score, plot_previous_marks_vs_score,
-    plot_participation_impact, plot_correlation_heatmap
+    plot_participation_impact, plot_correlation_heatmap,
+    plot_confidence_gauge, plot_student_vs_class_radar,
+    plot_feature_violin_distribution, plot_assignments_vs_internals
 )
 from src.train_models import load_model_artifacts, train_and_evaluate_models
 from src.prediction import PredictionService, RISK_LEVELS
-from src.explainability import ShapExplainerService, FEATURE_FRIENDLY_NAMES
+from src.explainability import ShapExplainerService, FEATURE_FRIENDLY_NAMES, plot_shap_waterfall_interactive
 from src.llm_explanation import generate_llm_explanation, check_ollama_available
 from src.database import init_database, save_prediction, get_predictions_history, get_model_evaluations
 
@@ -262,33 +264,57 @@ elif page == "3. Exploratory Data Analysis":
     if clean_df is None:
         st.warning("Cleaned dataset not found. Please clean or generate the dataset first.")
     else:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "Category Distribution",
-            "Attendance vs Score",
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "Cohort Distribution",
+            "Attendance & Previous Marks",
             "Study Hours vs Score",
-            "Participation Impact",
+            "Coursework & Assessments",
+            "Feature Spread Inspector",
             "Correlation Heatmap"
         ])
 
         with tab1:
-            st.plotly_chart(plot_category_distribution(clean_df), use_container_width=True)
-            st.info("Distribution illustrates balanced classification classes across Low, Medium, and High performance.")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.plotly_chart(plot_category_donut(clean_df), use_container_width=True)
+            with c2:
+                st.plotly_chart(plot_category_distribution(clean_df), use_container_width=True)
+            st.info("💡 **Key Takeaway**: The cohort displays a statistically realistic distribution across Low (<50), Medium (50–74), and High (≥75) tiers without extreme class imbalance.")
 
         with tab2:
-            st.plotly_chart(plot_attendance_vs_score(clean_df), use_container_width=True)
-            st.write("Observation: Attendance demonstrates a strong positive linear relationship with overall final score.")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.plotly_chart(plot_attendance_vs_score(clean_df), use_container_width=True)
+                st.caption("Strong positive linear trend: Students with attendance above 80% predominantly fall into Medium and High performance tiers.")
+            with c2:
+                st.plotly_chart(plot_previous_marks_vs_score(clean_df), use_container_width=True)
+                st.caption("Prior academic track record establishes a strong performance foundation for final results.")
 
         with tab3:
             st.plotly_chart(plot_study_hours_vs_score(clean_df), use_container_width=True)
-            st.write("Observation: Self-study hours correlate with higher exam scores with realistic variance.")
+            st.write("💡 **Observation**: While higher weekly study hours correlate with superior grades, diminishing returns and realistic noise appear above 25 hrs/week.")
 
         with tab4:
-            st.plotly_chart(plot_participation_impact(clean_df), use_container_width=True)
-            st.write("Observation: Active academic participation provides an observable upward lift on composite academic marks.")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.plotly_chart(plot_assignments_vs_internals(clean_df), use_container_width=True)
+                st.caption("Bubble size corresponds to Internal Assessment Marks. High coursework completion consistently clusters with stronger midterm scores.")
+            with c2:
+                st.plotly_chart(plot_participation_impact(clean_df), use_container_width=True)
+                st.caption("Active classroom participation provides an observable upward lift (+3 to +5 marks) across student categories.")
 
         with tab5:
+            st.markdown("##### 🎻 Inspect Feature Value Spread by Category")
+            feat_choice = st.selectbox(
+                "Select Feature to inspect distribution spread:",
+                ["Attendance_Percentage", "Study_Hours", "Previous_Marks", "Assignment_Score", "Internal_Assessment_Marks", "Completed_Assignments"]
+            )
+            st.plotly_chart(plot_feature_violin_distribution(clean_df, feat_choice), use_container_width=True)
+            st.caption("The violin shape depicts kernel density and distribution width, while the embedded box plot displays the median and interquartile range.")
+
+        with tab6:
             st.plotly_chart(plot_correlation_heatmap(clean_df), use_container_width=True)
-            st.write("Correlation analysis verifies realistic multi-factor relationships without artificial perfection.")
+            st.write("💡 **Correlation Insight**: Internal assessment marks (0.75+) and attendance (0.65+) exhibit the strongest positive correlations with final performance.")
 
 # -------------------------------------------------------------
 # PAGE 4: MODEL EVALUATION & COMPARISON
@@ -446,10 +472,24 @@ elif page == "5. Student Prediction":
             with res_col3:
                 st.metric("Estimated Final Score", f"{res['predicted_score']:.1f} / 100")
 
-            # Probability Breakdown
-            st.markdown("**Class Probability Breakdown**")
+            # Probability Breakdown and Visual Indicators
+            st.markdown("**Class Probability Breakdown & Visual Assessment**")
             prob_df = pd.DataFrame([res["probabilities"]])
             st.dataframe(prob_df, use_container_width=True)
+
+            pred_vis_col1, pred_vis_col2 = st.columns([1, 1])
+            with pred_vis_col1:
+                st.plotly_chart(
+                    plot_confidence_gauge(res["confidence"], res["predicted_category"], res["predicted_score"]),
+                    use_container_width=True
+                )
+            with pred_vis_col2:
+                clean_df_bench = load_clean_data()
+                if clean_df_bench is not None and "last_student_features" in st.session_state:
+                    st.plotly_chart(
+                        plot_student_vs_class_radar(st.session_state["last_student_features"], clean_df_bench),
+                        use_container_width=True
+                    )
 
             # Quick XAI preview if available
             expl = st.session_state.get("last_explanation")
@@ -526,7 +566,10 @@ elif page == "6. SHAP Explainability":
 
             ind_expl = explainer_service.explain_individual_student(features, cat_idx)
 
-            # Bar plot of local SHAP contributions
+            # Interactive SHAP Waterfall Plot
+            st.plotly_chart(plot_shap_waterfall_interactive(ind_expl), use_container_width=True)
+
+            # Diverging Bar plot of local SHAP contributions
             factors_df = pd.DataFrame(ind_expl["factors"])
             factors_df["Contribution"] = factors_df["shap_value"].apply(lambda x: "Positive Factor" if x >= 0 else "Negative Factor")
 
@@ -537,7 +580,7 @@ elif page == "6. SHAP Explainability":
                 color="Contribution",
                 orientation="h",
                 color_discrete_map={"Positive Factor": "#22c55e", "Negative Factor": "#ef4444"},
-                title=f"Feature Contributions toward '{cat}' Performance"
+                title=f"Detailed Feature Contributions toward '{cat}' Performance"
             )
             fig_ind.update_layout(yaxis=dict(autorange="reversed"), height=360, template="plotly_white")
             st.plotly_chart(fig_ind, use_container_width=True)

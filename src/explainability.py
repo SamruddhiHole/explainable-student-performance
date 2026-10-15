@@ -217,3 +217,56 @@ class ShapExplainerService:
             "readable_positive": readable_pos,
             "readable_negative": readable_neg
         }
+
+
+def plot_shap_waterfall_interactive(ind_expl: Dict[str, Any]) -> "go.Figure":
+    """
+    Renders an authentic, interactive SHAP Waterfall chart using Plotly.
+    Shows the step-by-step path from Base Expected Value E[f(x)] to Model Prediction f(x).
+    """
+    import plotly.graph_objects as go
+
+    base_val = ind_expl.get("base_value", 0.33)
+    factors = ind_expl.get("factors", [])
+    target_cat = ind_expl.get("predicted_category", "Medium")
+
+    x_labels = ["Base Value E[f(x)]"]
+    y_values = [base_val]
+    measures = ["absolute"]
+    texts = [f"{base_val:.3f}"]
+
+    for f in factors:
+        x_labels.append(f"{f['feature_name']}<br><span style='font-size:10px;color:gray'>({f['actual_value']})</span>")
+        y_values.append(f["shap_value"])
+        measures.append("relative")
+        texts.append(f"{f['shap_value']:+.3f}")
+
+    x_labels.append(f"Model Output f(x)<br>({target_cat})")
+    y_values.append(0)
+    measures.append("total")
+    texts.append("Final")
+
+    fig = go.Figure(go.Waterfall(
+        orientation="v",
+        measure=measures,
+        x=x_labels,
+        textposition="outside",
+        text=texts,
+        y=y_values,
+        connector={"line": {"color": "#9ca3af"}},
+        decreasing={"marker": {"color": "#ef4444"}},
+        increasing={"marker": {"color": "#22c55e"}},
+        totals={"marker": {"color": "#3b82f6"}}
+    ))
+
+    fig.update_layout(
+        title=f"SHAP Waterfall: Step-by-Step Pathway to '{target_cat}' Performance",
+        showlegend=False,
+        template="plotly_white",
+        height=450,
+        yaxis_title="Probability Contribution",
+        xaxis_tickangle=-25,
+        margin=dict(l=40, r=40, t=50, b=90)
+    )
+    return fig
+
