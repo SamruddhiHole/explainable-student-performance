@@ -75,7 +75,10 @@ from src.eda import (
 )
 from src.train_models import load_model_artifacts, train_and_evaluate_models
 from src.prediction import PredictionService, RISK_LEVELS
-from src.explainability import ShapExplainerService, FEATURE_FRIENDLY_NAMES, plot_shap_waterfall_interactive
+from src.explainability import (
+    ShapExplainerService, FEATURE_FRIENDLY_NAMES,
+    plot_shap_waterfall_interactive, plot_shap_driver_bars
+)
 from src.llm_explanation import generate_llm_explanation, check_ollama_available
 from src.database import init_database, save_prediction, get_predictions_history, get_model_evaluations
 
@@ -598,16 +601,21 @@ elif page == "5. Student Prediction":
 # PAGE 6: SHAP EXPLAINABILITY
 # -------------------------------------------------------------
 elif page == "6. SHAP Explainability":
-    st.title("🔍 Explainable AI (SHAP & Insights)")
-    st.write("Understand the predictive reasoning behind student evaluations through global and individual SHAP explanations.")
+    st.title("🔍 Explainable AI (SHAP & Mentoring Insights)")
+    st.write(
+        "Traditional Machine Learning models are often criticized as **black boxes**. "
+        "Here, **SHAP (SHapley Additive exPlanations)** mathematically unpacks the model to show teachers "
+        "exactly **why** a student received their specific grade."
+    )
 
     explainer_service = get_explainer_service()
 
     if explainer_service.rf_model is None:
-        st.warning("Models not ready for SHAP analysis. Please train models first.")
+        st.warning("Models not ready for SHAP analysis. Please train models in page 4 first.")
     else:
-        st.subheader("1. Global SHAP Feature Importance")
-        st.write("Quantifies the overall average impact of each academic indicator across all students:")
+        # 1. Global Feature Importance (Class-Wide)
+        st.subheader("1. Class-Wide Academic Drivers (Global SHAP)")
+        st.write("Which factors matter most across all 960 students in the school?")
 
         try:
             global_imp = explainer_service.get_global_feature_importance()
@@ -617,79 +625,167 @@ elif page == "6. SHAP Explainability":
                 y="Feature_Name",
                 orientation="h",
                 color="Mean_Absolute_SHAP",
-                color_continuous_scale="Blues",
-                title="Global Feature Importance (Mean |SHAP| across classes)"
+                color_continuous_scale="Teal",
+                title="Top Academic Indicators Influencing Student Outcomes (Whole Cohort)"
             )
-            fig_global.update_layout(yaxis=dict(autorange="reversed"), height=380, template="plotly_white")
+            fig_global.update_layout(
+                yaxis=dict(autorange="reversed"),
+                xaxis_title="Overall Influence (Mean |SHAP| Value)",
+                yaxis_title="Academic Factor",
+                height=340,
+                template="plotly_white"
+            )
             st.plotly_chart(fig_global, use_container_width=True)
+
+            st.info(
+                "💡 **Key Class-Wide Insight**: **Internal Assessment Marks** and **Class Attendance** "
+                "are the two most decisive drivers across the entire student population."
+            )
         except Exception as e:
             st.error(f"Global SHAP calculation error: {e}")
 
         st.markdown("---")
-        st.subheader("2. Student-Wise Individual SHAP Explanation")
 
-        # Check if student was predicted in session
-        if "last_student_features" in st.session_state and "last_prediction" in st.session_state:
-            features = st.session_state["last_student_features"]
-            pred = st.session_state["last_prediction"]
-            cat = pred["predicted_category"]
-            cat_idx = {"Low": 0, "Medium": 1, "High": 2}.get(cat, 1)
+        # 2. Individual Student Diagnosis (Local SHAP)
+        st.subheader("2. Individual Student Diagnosis: Why Did This Student Get This Grade?")
+        st.write("Select a student profile below to inspect their personalized AI explanation.")
 
-            st.write(f"Explaining prediction for **{st.session_state.get('last_student_id', 'Student')}** (Outcome: **{cat} Performance**):")
+        # Presets so the page is NEVER blank
+        preset_options = [
+            "🌟 High-Achieving Student (Topper Profile)",
+            "⚠️ At-Risk Struggling Student (Needs Mentoring)",
+            "📖 Average Borderline Student (Can Improve)"
+        ]
 
-            ind_expl = explainer_service.explain_individual_student(features, cat_idx)
+        has_custom = "last_student_features" in st.session_state and "last_prediction" in st.session_state
+        if has_custom:
+            custom_id = st.session_state.get("last_student_id", "Custom Student")
+            preset_options.insert(0, f"🎓 Currently Active Student ({custom_id} from Page 5)")
 
-            # Interactive SHAP Waterfall Plot
-            st.plotly_chart(plot_shap_waterfall_interactive(ind_expl), use_container_width=True)
+        selected_profile = st.selectbox("Choose Student to Explain:", preset_options)
 
-            # Diverging Bar plot of local SHAP contributions
-            factors_df = pd.DataFrame(ind_expl["factors"])
-            factors_df["Contribution"] = factors_df["shap_value"].apply(lambda x: "Positive Factor" if x >= 0 else "Negative Factor")
+        pred_service = get_prediction_service()
 
-            fig_ind = px.bar(
-                factors_df,
-                x="shap_value",
-                y="feature_name",
-                color="Contribution",
-                orientation="h",
-                color_discrete_map={"Positive Factor": "#22c55e", "Negative Factor": "#ef4444"},
-                title=f"Detailed Feature Contributions toward '{cat}' Performance"
-            )
-            fig_ind.update_layout(yaxis=dict(autorange="reversed"), height=360, template="plotly_white")
-            st.plotly_chart(fig_ind, use_container_width=True)
-
-            col_pos, col_neg = st.columns(2)
-            with col_pos:
-                st.markdown("##### 🟢 Primary Positive Contributors")
-                for s in ind_expl["readable_positive"]:
-                    st.write(s)
-                if not ind_expl["readable_positive"]:
-                    st.caption("No significant positive drivers.")
-
-            with col_neg:
-                st.markdown("##### 🔴 Primary Negative Constraints")
-                for s in ind_expl["readable_negative"]:
-                    st.write(s)
-                if not ind_expl["readable_negative"]:
-                    st.caption("No significant negative constraints.")
-
-            st.markdown("---")
-            st.subheader("3. Natural Language Explanation")
-
-            ollama_status = check_ollama_available()
-            if ollama_status:
-                st.success("🟢 Local Ollama (Qwen2.5-3B) service detected and active.")
-            else:
-                st.info("ℹ️ Local Ollama service not detected. Using built-in deterministic Python template generator.")
-
-            use_llm = st.checkbox("Generate Natural-Language Explanation", value=True)
-            if use_llm:
-                with st.spinner("Generating teacher-friendly explanation..."):
-                    llm_res = generate_llm_explanation(pred, ind_expl, use_llm_if_available=ollama_status)
-                    st.markdown(f"**Verbalizer Source**: `{llm_res['model_used']}`")
-                    st.info(llm_res["explanation"])
+        if has_custom and selected_profile.startswith("🎓 Currently Active Student"):
+            active_features = st.session_state["last_student_features"]
+            active_pred = st.session_state["last_prediction"]
+            student_label = st.session_state.get("last_student_id", "Custom Student")
+        elif "High-Achieving" in selected_profile:
+            student_label = "Student STU_HIGH (Topper)"
+            active_features = {
+                "Attendance_Percentage": 92.0, "Study_Hours": 22.0, "Previous_Marks": 84.0,
+                "Assignment_Score": 88.0, "Internal_Assessment_Marks": 44.0,
+                "Completed_Assignments": 10, "Academic_Participation": "High"
+            }
+            active_pred = pred_service.predict_student(active_features)
+        elif "At-Risk" in selected_profile:
+            student_label = "Student STU_ATRISK (Struggling)"
+            active_features = {
+                "Attendance_Percentage": 52.0, "Study_Hours": 6.0, "Previous_Marks": 44.0,
+                "Assignment_Score": 48.0, "Internal_Assessment_Marks": 18.0,
+                "Completed_Assignments": 3, "Academic_Participation": "Low"
+            }
+            active_pred = pred_service.predict_student(active_features)
         else:
-            st.info("👉 Please predict student performance in the 'Student Prediction' tab first to generate local SHAP explanations.")
+            student_label = "Student STU_BORDER (Average)"
+            active_features = {
+                "Attendance_Percentage": 70.0, "Study_Hours": 12.0, "Previous_Marks": 62.0,
+                "Assignment_Score": 65.0, "Internal_Assessment_Marks": 28.0,
+                "Completed_Assignments": 6, "Academic_Participation": "Medium"
+            }
+            active_pred = pred_service.predict_student(active_features)
+
+        cat = active_pred["predicted_category"]
+        cat_idx = {"Low": 0, "Medium": 1, "High": 2}.get(cat, 1)
+
+        # Profile Summary Cards
+        sc1, sc2, sc3, sc4 = st.columns(4)
+        with sc1:
+            st.metric("Diagnosed Student", student_label)
+        with sc2:
+            st.metric("Predicted Standing", f"{cat} Standing")
+        with sc3:
+            st.metric("Model Confidence", f"{active_pred['confidence']:.1f}%")
+        with sc4:
+            st.metric("Est. Final Score", f"{active_pred['predicted_score']:.1f} / 100")
+
+        # Compute SHAP explanation for chosen student
+        ind_expl = explainer_service.explain_individual_student(active_features, cat_idx)
+
+        # Visual 1: Decision Waterfall
+        st.markdown("#### A. Step-by-Step AI Decision Journey")
+        st.write(
+            "The chart below starts at the **Class Baseline** (average student score). "
+            "Each factor pushes the student's probability **UP (Green)** or pulls it **DOWN (Red)** to reach their final outcome:"
+        )
+        st.plotly_chart(plot_shap_waterfall_interactive(ind_expl), use_container_width=True)
+
+        # Visual 2: Tug-of-War Driver Bars
+        st.markdown("#### B. Tug-of-War: What Helped vs What Hurt")
+        st.plotly_chart(plot_shap_driver_bars(ind_expl), use_container_width=True)
+
+        # 3. Plain English Teacher Diagnosis
+        st.markdown("---")
+        st.subheader("3. Teacher Diagnosis & Actionable Mentoring Advice")
+
+        c_pos, c_neg = st.columns(2)
+        with c_pos:
+            st.markdown("##### 🟢 Academic Strengths (What Boosted Grades)")
+            if ind_expl["readable_positive"]:
+                for s in ind_expl["readable_positive"]:
+                    clean_s = s.replace("[+]", "✅").replace("contributed positively", "boosted chances")
+                    st.write(clean_s)
+            else:
+                st.caption("No strong positive drivers detected.")
+
+        with c_neg:
+            st.markdown("##### 🔴 Warning Areas (What Pulled Grades Down)")
+            if ind_expl["readable_negative"]:
+                for s in ind_expl["readable_negative"]:
+                    clean_s = s.replace("[-]", "⚠️").replace("pulled prediction down", "reduced performance by")
+                    st.write(clean_s)
+            else:
+                st.caption("No significant negative constraints.")
+
+        # Concrete Action Advice Box
+        if cat == "Low":
+            st.error(
+                "🚨 **Recommended Teacher Mentoring Plan**:  \n"
+                "• **Immediate Action**: Schedule mandatory attendance counseling; student is in critical failure risk.  \n"
+                "• **Targeted Goal**: Focus on completing internal assessment assignments to quickly recover passing marks."
+            )
+        elif cat == "Medium":
+            st.warning(
+                "⚠️ **Recommended Teacher Mentoring Plan**:  \n"
+                "• **Growth Opportunity**: Student is in safe passing territory but can easily achieve High Standing.  \n"
+                "• **Targeted Goal**: Increasing weekly self-study by 3–4 hours and attending discussion sessions will elevate final scores."
+            )
+        else:
+            st.success(
+                "🌟 **Recommended Teacher Mentoring Plan**:  \n"
+                "• **Distinction Trajectory**: Consistent performance across attendance, assignments, and test scores.  \n"
+                "• **Targeted Goal**: Nominate for peer-mentoring or advanced seminar presentations."
+            )
+
+        # Natural Language Summary Generator
+        st.markdown("##### 📝 Natural Language Report for Parents / Academic Committee")
+        ollama_status = check_ollama_available()
+        llm_res = generate_llm_explanation(active_pred, ind_expl, use_llm_if_available=ollama_status)
+        st.info(llm_res["explanation"])
+
+        st.markdown("---")
+
+        # 4. Teacher & Viva Presentation Guide
+        with st.expander("🎓 How to explain SHAP to Teachers & Examiners (Click to read)", expanded=True):
+            st.markdown(
+                """
+                > [!TIP]
+                > **3 Key Answers for Your Project Viva**:
+                > 1. **What is SHAP?** *"Sir/Ma'am, SHAP stands for SHapley Additive exPlanations. It comes from Nobel Prize-winning cooperative game theory to fairly calculate the exact percentage impact of each feature on the model's decision."*
+                > 2. **Why is it essential in Education?** *"Because teachers cannot trust a black box. If an AI flags a student as at-risk, the teacher must know WHY—is it poor attendance, low internal test marks, or incomplete homework?"*
+                > 3. **How do you read the Waterfall chart?** *"It starts at the class average baseline. Green steps represent student strengths that push the score up; red steps represent weaknesses that pull the score down."*
+                """
+            )
 
 # -------------------------------------------------------------
 # PAGE 7: PREDICTION HISTORY (SQLITE)

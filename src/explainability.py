@@ -222,7 +222,7 @@ class ShapExplainerService:
 def plot_shap_waterfall_interactive(ind_expl: Dict[str, Any]) -> "go.Figure":
     """
     Renders an authentic, interactive SHAP Waterfall chart using Plotly.
-    Shows the step-by-step path from Base Expected Value E[f(x)] to Model Prediction f(x).
+    Shows the step-by-step path from Class Average Baseline to Final Student Probability.
     """
     import plotly.graph_objects as go
 
@@ -230,18 +230,21 @@ def plot_shap_waterfall_interactive(ind_expl: Dict[str, Any]) -> "go.Figure":
     factors = ind_expl.get("factors", [])
     target_cat = ind_expl.get("predicted_category", "Medium")
 
-    x_labels = ["Base Value E[f(x)]"]
+    x_labels = ["Class Baseline<br>(Average Student)"]
     y_values = [base_val]
     measures = ["absolute"]
-    texts = [f"{base_val:.3f}"]
+    texts = [f"{base_val:.2f}"]
 
     for f in factors:
-        x_labels.append(f"{f['feature_name']}<br><span style='font-size:10px;color:gray'>({f['actual_value']})</span>")
-        y_values.append(f["shap_value"])
+        feat_name = f.get('feature_name', '')
+        actual = f.get('actual_value', '')
+        val = f.get('shap_value', 0.0)
+        x_labels.append(f"{feat_name}<br><span style='font-size:11px;color:gray'>({actual})</span>")
+        y_values.append(val)
         measures.append("relative")
-        texts.append(f"{f['shap_value']:+.3f}")
+        texts.append(f"{val:+.2f}")
 
-    x_labels.append(f"Model Output f(x)<br>({target_cat})")
+    x_labels.append(f"Final Prediction<br><b>({target_cat})</b>")
     y_values.append(0)
     measures.append("total")
     texts.append("Final")
@@ -255,18 +258,68 @@ def plot_shap_waterfall_interactive(ind_expl: Dict[str, Any]) -> "go.Figure":
         y=y_values,
         connector={"line": {"color": "#9ca3af"}},
         decreasing={"marker": {"color": "#ef4444"}},
-        increasing={"marker": {"color": "#22c55e"}},
+        increasing={"marker": {"color": "#10b981"}},
         totals={"marker": {"color": "#3b82f6"}}
     ))
 
     fig.update_layout(
-        title=f"SHAP Waterfall: Step-by-Step Pathway to '{target_cat}' Performance",
+        title=f"Step-by-Step AI Decision Journey toward '{target_cat}' Standing",
         showlegend=False,
         template="plotly_white",
-        height=450,
-        yaxis_title="Probability Contribution",
-        xaxis_tickangle=-25,
-        margin=dict(l=40, r=40, t=50, b=90)
+        height=430,
+        yaxis_title="Probability Score (0.0 to 1.0)",
+        xaxis_tickangle=-20,
+        margin=dict(l=40, r=40, t=50, b=80)
     )
     return fig
+
+
+def plot_shap_driver_bars(ind_expl: Dict[str, Any]) -> "go.Figure":
+    """
+    Renders a clear diverging horizontal bar chart showing positive vs negative factors.
+    """
+    import plotly.graph_objects as go
+
+    factors = ind_expl.get("factors", [])
+    target_cat = ind_expl.get("predicted_category", "Medium")
+
+    names = []
+    values = []
+    colors = []
+    texts = []
+
+    # Sort so most impactful are on top
+    sorted_factors = sorted(factors, key=lambda x: x["shap_value"])
+
+    for f in sorted_factors:
+        val = f["shap_value"]
+        names.append(f"{f['feature_name']} ({f['actual_value']})")
+        values.append(val)
+        if val >= 0:
+            colors.append("#10b981")  # Green
+            texts.append(f"+{val:.2f} (Helped)")
+        else:
+            colors.append("#ef4444")  # Red
+            texts.append(f"{val:.2f} (Hurt)")
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=names,
+        x=values,
+        orientation="h",
+        text=texts,
+        textposition="outside",
+        marker=dict(color=colors, line=dict(color="#ffffff", width=1.5))
+    ))
+
+    fig.update_layout(
+        title=f"Key Academic Drivers: What Helped (+) vs Hurt (-) This Student",
+        xaxis_title="Influence on Predicted Outcome (SHAP Value)",
+        yaxis_title="Academic Factor & Student Value",
+        template="plotly_white",
+        height=380,
+        margin=dict(l=40, r=60, t=50, b=40)
+    )
+    return fig
+
 
