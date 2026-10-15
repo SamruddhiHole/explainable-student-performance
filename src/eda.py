@@ -349,8 +349,108 @@ def plot_student_vs_class_radar(student_features: dict, class_df: pd.DataFrame) 
 
 
 # ============================================================================
+# 6. MODEL COMPARISON & ACCURACY CHARTS
+# ============================================================================
+def plot_model_accuracy_comparison(metrics: dict) -> go.Figure:
+    """
+    Renders an intuitive horizontal bar chart comparing the accuracy of all trained ML models.
+    """
+    model_order = ["XGBoost", "Logistic Regression", "Random Forest"]
+    display_names = {
+        "Random Forest": "🥇 Random Forest (Winner / Primary)",
+        "Logistic Regression": "🥈 Logistic Regression (Baseline)",
+        "XGBoost": "🥉 XGBoost (Gradient Boosting)"
+    }
+    bar_colors = {
+        "Random Forest": "#10b981",       # Emerald Green for Winner
+        "Logistic Regression": "#3b82f6",  # Royal Blue for Baseline
+        "XGBoost": "#f59e0b"              # Amber for Third
+    }
+
+    names = []
+    accs = []
+    colors = []
+    texts = []
+
+    for m_name in model_order:
+        if m_name in metrics:
+            acc_val = round(metrics[m_name]["accuracy"] * 100, 1)
+            cm = metrics[m_name].get("confusion_matrix")
+            correct = sum(cm[i][i] for i in range(len(cm))) if cm else int(acc_val * 1.92)
+            names.append(display_names.get(m_name, m_name))
+            accs.append(acc_val)
+            colors.append(bar_colors.get(m_name, "#6b7280"))
+            texts.append(f"<b>{acc_val}%</b> ({correct} of 192 correct)")
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=names,
+        x=accs,
+        orientation="h",
+        text=texts,
+        textposition="inside",
+        marker=dict(color=colors, line=dict(color="#ffffff", width=1.5)),
+        hoverinfo="x+y"
+    ))
+
+    fig.update_layout(
+        title="Model Accuracy Leaderboard (Evaluated on 192 Test Students)",
+        xaxis_title="Overall Accuracy (%)",
+        yaxis_title="Algorithm",
+        xaxis_range=[60, 95],
+        template="plotly_white",
+        height=280,
+        margin=dict(l=40, r=30, t=50, b=40)
+    )
+    return fig
+
+
+def plot_clean_confusion_matrix(cm_data: list, model_name: str) -> go.Figure:
+    """
+    Renders an easily explainable Confusion Matrix with clear student counts.
+    """
+    labels = ["Low Standing", "Medium Standing", "High Standing"]
+    cm = np.array(cm_data)
+
+    # Format cell text with descriptive annotation
+    text_matrix = []
+    for r in range(len(labels)):
+        row_text = []
+        for c in range(len(labels)):
+            val = cm[r][c]
+            if r == c:
+                row_text.append(f"<b>{val}</b><br><span style='font-size:11px'>✅ Correct</span>")
+            elif (r == 0 and c == 2) or (r == 2 and c == 0):
+                row_text.append(f"<b>{val}</b><br><span style='font-size:11px'>❌ Extreme</span>")
+            else:
+                row_text.append(f"<b>{val}</b>")
+        text_matrix.append(row_text)
+
+    fig = px.imshow(
+        cm,
+        x=labels,
+        y=labels,
+        labels=dict(x="What the Model Predicted", y="Actual Student Grade", color="Students"),
+        color_continuous_scale="Blues",
+        title=f"Prediction Accuracy Matrix for {model_name}"
+    )
+    fig.update_traces(
+        text=text_matrix,
+        texttemplate="%{text}",
+        hoverinfo="x+y+z"
+    )
+    fig.update_layout(
+        template="plotly_white",
+        height=340,
+        margin=dict(l=30, r=30, t=50, b=30)
+    )
+    return fig
+
+
+# ============================================================================
 # BACKWARD-COMPATIBILITY ALIASES (Ensures no imports break)
 # ============================================================================
 plot_category_donut = plot_simple_cohort_donut
 plot_category_distribution = plot_simple_cohort_donut
 plot_attendance_tiers_success_rate = plot_attendance_pass_rate_bars
+
