@@ -1,12 +1,11 @@
 """
 Exploratory Data Analysis (EDA) Module.
-Generates interactive Plotly charts examining student academic indicators:
-  1. Attendance vs Final Score
-  2. Study Hours vs Final Score
-  3. Previous Marks vs Final Score
-  4. Performance Category Distribution
-  5. Academic Participation vs Final Score (Box Plot)
-  6. Feature Correlation Heatmap
+Provides simple, intuitive, and visually attractive Plotly charts for student performance:
+  1. Executive Cohort Breakdown (Donut Chart)
+  2. Attendance vs Final Score Brackets (Bar Chart)
+  3. Study Hours Impact on Marks (Bar Chart)
+  4. Top Success Factors Ranking (Horizontal Bar Chart)
+  + Gauge and Radar charts for individual student prediction.
 """
 
 import pandas as pd
@@ -14,167 +13,28 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-try:
-    import statsmodels.api
-    STATSMODELS_AVAILABLE = True
-except ImportError:
-    STATSMODELS_AVAILABLE = False
-
 CATEGORY_COLORS = {
-    "Low": "#ef4444",     # Red
-    "Medium": "#eab308",  # Amber/Yellow
-    "High": "#22c55e"     # Green
+    "Low": "#ef4444",     # Red - At Risk
+    "Medium": "#f59e0b",  # Amber/Yellow - Average
+    "High": "#10b981"     # Emerald Green - Distinction
 }
 
 
-def plot_category_distribution(df: pd.DataFrame) -> go.Figure:
-    """Renders distribution of student performance categories."""
+# ============================================================================
+# 1. SIMPLE EXECUTIVE COHORT BREAKDOWN (DONUT CHART)
+# ============================================================================
+def plot_simple_cohort_donut(df: pd.DataFrame) -> go.Figure:
+    """
+    Renders an elegant, simple Donut chart showing the distribution of
+    High, Medium, and Low performing students with clear percentages and counts.
+    """
     if "Performance_Category" not in df.columns:
         raise ValueError("Missing Performance_Category column.")
 
-    counts = df["Performance_Category"].value_counts().reset_index()
+    counts = df["Performance_Category"].value_counts().reindex(["High", "Medium", "Low"]).fillna(0).reset_index()
     counts.columns = ["Category", "Count"]
+    total = int(counts["Count"].sum())
 
-    fig = px.bar(
-        counts,
-        x="Category",
-        y="Count",
-        color="Category",
-        color_discrete_map=CATEGORY_COLORS,
-        text="Count",
-        title="Student Distribution across Performance Categories"
-    )
-    fig.update_traces(textposition="outside")
-    fig.update_layout(
-        xaxis_title="Performance Category",
-        yaxis_title="Number of Students",
-        showlegend=False,
-        template="plotly_white",
-        height=380
-    )
-    return fig
-
-
-def plot_attendance_vs_score(df: pd.DataFrame) -> go.Figure:
-    """Renders relationship between Class Attendance and Final Score."""
-    fig = px.scatter(
-        df,
-        x="Attendance_Percentage",
-        y="Final_Score" if "Final_Score" in df.columns else "Previous_Marks",
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        trendline="ols" if STATSMODELS_AVAILABLE else None,
-        hover_data=["Student_ID", "Study_Hours", "Previous_Marks"] if "Student_ID" in df.columns else None,
-        title="Class Attendance (%) vs Final Score"
-    )
-    fig.update_layout(
-        xaxis_title="Attendance Percentage (%)",
-        yaxis_title="Final Score (Out of 100)",
-        template="plotly_white",
-        height=400
-    )
-    return fig
-
-
-def plot_study_hours_vs_score(df: pd.DataFrame) -> go.Figure:
-    """Renders relationship between Weekly Study Hours and Final Score."""
-    fig = px.scatter(
-        df,
-        x="Study_Hours",
-        y="Final_Score" if "Final_Score" in df.columns else "Previous_Marks",
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        trendline="ols" if STATSMODELS_AVAILABLE else None,
-        hover_data=["Student_ID", "Attendance_Percentage"] if "Student_ID" in df.columns else None,
-        title="Weekly Study Hours vs Final Score"
-    )
-    fig.update_layout(
-        xaxis_title="Weekly Self-Study Hours",
-        yaxis_title="Final Score (Out of 100)",
-        template="plotly_white",
-        height=400
-    )
-    return fig
-
-
-def plot_previous_marks_vs_score(df: pd.DataFrame) -> go.Figure:
-    """Renders relationship between Previous Marks and Final Score."""
-    fig = px.scatter(
-        df,
-        x="Previous_Marks",
-        y="Final_Score" if "Final_Score" in df.columns else "Assignment_Score",
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        trendline="ols" if STATSMODELS_AVAILABLE else None,
-        hover_data=["Student_ID"] if "Student_ID" in df.columns else None,
-        title="Previous Semester Marks (%) vs Final Score"
-    )
-    fig.update_layout(
-        xaxis_title="Previous Semester Marks (%)",
-        yaxis_title="Final Score (Out of 100)",
-        template="plotly_white",
-        height=400
-    )
-    return fig
-
-
-def plot_participation_impact(df: pd.DataFrame) -> go.Figure:
-    """Box plot of Final Score grouped by Academic Participation."""
-    order = ["Low", "Medium", "High"]
-    fig = px.box(
-        df,
-        x="Academic_Participation",
-        y="Final_Score" if "Final_Score" in df.columns else "Previous_Marks",
-        category_orders={"Academic_Participation": order},
-        color="Academic_Participation",
-        color_discrete_map={"Low": "#ef4444", "Medium": "#3b82f6", "High": "#22c55e"},
-        points="all",
-        title="Impact of Academic Participation on Final Score"
-    )
-    fig.update_layout(
-        xaxis_title="Academic Participation Level",
-        yaxis_title="Final Score (Out of 100)",
-        showlegend=False,
-        template="plotly_white",
-        height=400
-    )
-    return fig
-
-
-def plot_correlation_heatmap(df: pd.DataFrame) -> go.Figure:
-    """Renders correlation matrix among numerical features."""
-    num_cols = [
-        "Attendance_Percentage", "Study_Hours", "Previous_Marks",
-        "Assignment_Score", "Internal_Assessment_Marks", "Completed_Assignments"
-    ]
-    if "Final_Score" in df.columns:
-        num_cols.append("Final_Score")
-
-    corr = df[num_cols].corr().round(2)
-
-    fig = px.imshow(
-        corr,
-        text_auto=True,
-        aspect="auto",
-        color_continuous_scale="Blues",
-        title="Feature Correlation Heatmap"
-    )
-    fig.update_layout(
-        template="plotly_white",
-        height=450
-    )
-    return fig
-
-
-def plot_category_donut(df: pd.DataFrame) -> go.Figure:
-    """Renders a polished donut chart of performance categories with count & percentage."""
-    if "Performance_Category" not in df.columns:
-        raise ValueError("Missing Performance_Category column.")
-
-    counts = df["Performance_Category"].value_counts().reset_index()
-    counts.columns = ["Category", "Count"]
-
-    total = counts["Count"].sum()
     fig = px.pie(
         counts,
         values="Count",
@@ -182,23 +42,209 @@ def plot_category_donut(df: pd.DataFrame) -> go.Figure:
         hole=0.55,
         color="Category",
         color_discrete_map=CATEGORY_COLORS,
-        title="Performance Cohort Breakdown (Donut Distribution)"
+        title="Student Performance Breakdown (Overall Cohort)"
     )
     fig.update_traces(
         textposition="outside",
-        textinfo="percent+label",
+        textinfo="label+percent+value",
         hoverinfo="label+value+percent",
-        marker=dict(line=dict(color="#ffffff", width=2))
+        marker=dict(line=dict(color="#ffffff", width=2.5))
     )
     fig.update_layout(
-        annotations=[dict(text=f"Total<br><b>{total}</b>", x=0.5, y=0.5, font_size=16, showarrow=False)],
+        annotations=[dict(
+            text=f"Total<br><b>{total:,}</b><br><span style='font-size:12px;color:gray'>Students</span>",
+            x=0.5, y=0.5,
+            font_size=15,
+            showarrow=False
+        )],
         template="plotly_white",
         height=380,
-        showlegend=True
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
+        margin=dict(l=20, r=20, t=50, b=30)
     )
     return fig
 
 
+# ============================================================================
+# 2. ATTENDANCE BRACKETS VS AVERAGE MARKS (BAR CHART)
+# ============================================================================
+def plot_attendance_pass_rate_bars(df: pd.DataFrame) -> go.Figure:
+    """
+    Renders an easy-to-understand bar chart showing how attendance tiers
+    directly impact average final marks (Out of 100).
+    """
+    df_temp = df.copy()
+
+    def get_bracket(att):
+        if att < 60:
+            return "Below 60% (Critical Risk ❌)"
+        elif att < 75:
+            return "60% to 74% (Needs Attention ⚠️)"
+        elif att < 85:
+            return "75% to 84% (Safe Zone ✅)"
+        else:
+            return "85% & Above (Distinction 🌟)"
+
+    df_temp["Bracket"] = df_temp["Attendance_Percentage"].apply(get_bracket)
+
+    order = [
+        "Below 60% (Critical Risk ❌)",
+        "60% to 74% (Needs Attention ⚠️)",
+        "75% to 84% (Safe Zone ✅)",
+        "85% & Above (Distinction 🌟)"
+    ]
+
+    grouped = df_temp.groupby("Bracket", observed=False)["Final_Score"].agg(["mean", "count"]).reindex(order).reset_index()
+    grouped["mean"] = grouped["mean"].round(1)
+
+    colors = ["#ef4444", "#f59e0b", "#3b82f6", "#10b981"]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=grouped["Bracket"],
+        y=grouped["mean"],
+        text=[f"<b>{val:.1f} Marks</b><br>({cnt} students)" for val, cnt in zip(grouped["mean"], grouped["count"])],
+        textposition="outside",
+        marker=dict(color=colors, line=dict(color="#ffffff", width=1.5)),
+        hoverinfo="x+y"
+    ))
+
+    # Add passing benchmark line at 50 marks
+    fig.add_hline(
+        y=50,
+        line_dash="dash",
+        line_color="#dc2626",
+        annotation_text="Passing Threshold (50 Marks)",
+        annotation_position="bottom right"
+    )
+
+    fig.update_layout(
+        title="Class Attendance vs Average Final Marks",
+        xaxis_title="Attendance Bracket",
+        yaxis_title="Average Final Marks (Out of 100)",
+        yaxis_range=[0, 105],
+        template="plotly_white",
+        height=380,
+        margin=dict(l=30, r=30, t=50, b=40)
+    )
+    return fig
+
+
+# ============================================================================
+# 3. WEEKLY STUDY HOURS IMPACT (BAR CHART)
+# ============================================================================
+def plot_study_hours_impact_bars(df: pd.DataFrame) -> go.Figure:
+    """
+    Renders an intuitive bar chart demonstrating how weekly self-study hours
+    translate into higher academic marks.
+    """
+    df_temp = df.copy()
+
+    def get_study_bracket(hrs):
+        if hrs < 10:
+            return "< 10 Hours / Week<br>(Low Effort)"
+        elif hrs <= 20:
+            return "10 to 20 Hours / Week<br>(Regular Habit)"
+        else:
+            return "> 20 Hours / Week<br>(Dedicated Study)"
+
+    df_temp["Study_Bracket"] = df_temp["Study_Hours"].apply(get_study_bracket)
+
+    order = [
+        "< 10 Hours / Week<br>(Low Effort)",
+        "10 to 20 Hours / Week<br>(Regular Habit)",
+        "> 20 Hours / Week<br>(Dedicated Study)"
+    ]
+
+    grouped = df_temp.groupby("Study_Bracket", observed=False)["Final_Score"].agg(["mean", "count"]).reindex(order).reset_index()
+    grouped["mean"] = grouped["mean"].round(1)
+
+    colors = ["#f87171", "#60a5fa", "#34d399"]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=grouped["Study_Bracket"],
+        y=grouped["mean"],
+        text=[f"<b>{val:.1f} Marks</b><br>({cnt} students)" for val, cnt in zip(grouped["mean"], grouped["count"])],
+        textposition="outside",
+        marker=dict(color=colors, line=dict(color="#ffffff", width=1.5)),
+        hoverinfo="x+y"
+    ))
+
+    fig.update_layout(
+        title="Weekly Self-Study Hours vs Average Final Marks",
+        xaxis_title="Study Hours Bracket",
+        yaxis_title="Average Final Marks (Out of 100)",
+        yaxis_range=[0, 105],
+        template="plotly_white",
+        height=380,
+        margin=dict(l=30, r=30, t=50, b=40)
+    )
+    return fig
+
+
+# ============================================================================
+# 4. TOP SUCCESS FACTORS (RANKED HORIZONTAL BAR CHART)
+# ============================================================================
+def plot_top_success_factors(df: pd.DataFrame) -> go.Figure:
+    """
+    Renders a clear, ranked horizontal bar chart showing the top academic factors
+    that determine a student's final score (based on correlation analysis).
+    """
+    factors = [
+        ("Internal Assessment Marks", "Internal_Assessment_Marks", "Continuous exam tests"),
+        ("Class Attendance", "Attendance_Percentage", "Regular lecture presence"),
+        ("Coursework Assignments", "Assignment_Score", "Practical homework score"),
+        ("Previous Semester Marks", "Previous_Marks", "Past academic foundation"),
+        ("Weekly Self-Study", "Study_Hours", "Personal revision hours")
+    ]
+
+    records = []
+    target_col = "Final_Score" if "Final_Score" in df.columns else "Previous_Marks"
+
+    for label, col, desc in factors:
+        if col in df.columns and target_col in df.columns:
+            corr_val = float(df[col].corr(df[target_col]))
+            records.append({
+                "Factor": label,
+                "Correlation": round(corr_val * 100, 1),
+                "Description": desc
+            })
+
+    summary_df = pd.DataFrame(records).sort_values("Correlation", ascending=True)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=summary_df["Factor"],
+        x=summary_df["Correlation"],
+        orientation="h",
+        text=[f"<b>{val:.0f}% Impact</b>" for val in summary_df["Correlation"]],
+        textposition="inside",
+        marker=dict(
+            color=summary_df["Correlation"],
+            colorscale="Teal",
+            line=dict(color="#ffffff", width=1.5)
+        ),
+        hovertext=[f"{f}: {c}% correlation with final score" for f, c in zip(summary_df["Factor"], summary_df["Correlation"])],
+        hoverinfo="text"
+    ))
+
+    fig.update_layout(
+        title="Top 5 Factors Leading to High Student Grades",
+        xaxis_title="Relative Impact on Final Marks (%)",
+        yaxis_title="Academic Indicator",
+        xaxis_range=[0, 100],
+        template="plotly_white",
+        height=380,
+        margin=dict(l=40, r=30, t=50, b=40)
+    )
+    return fig
+
+
+# ============================================================================
+# 5. INDIVIDUAL PREDICTION VISUALIZATIONS (RADAR & GAUGE)
+# ============================================================================
 def plot_confidence_gauge(confidence_pct: float, category: str, predicted_score: float = None) -> go.Figure:
     """Renders an interactive speedometer gauge for model confidence."""
     bar_color = CATEGORY_COLORS.get(category, "#3b82f6")
@@ -258,7 +304,6 @@ def plot_student_vs_class_radar(student_features: dict, class_df: pd.DataFrame) 
         min(100.0, float(student_features.get("Completed_Assignments", 0)) * 10.0)
     ]
 
-    # Calculate class averages
     class_vals = [
         float(class_df["Attendance_Percentage"].mean()),
         min(100.0, float(class_df["Study_Hours"].mean()) * 3.33),
@@ -268,7 +313,6 @@ def plot_student_vs_class_radar(student_features: dict, class_df: pd.DataFrame) 
         min(100.0, float(class_df["Completed_Assignments"].mean()) * 10.0)
     ]
 
-    # Close the radar loop
     stu_vals += [stu_vals[0]]
     class_vals += [class_vals[0]]
     cat_loop = categories + [categories[0]]
@@ -304,158 +348,9 @@ def plot_student_vs_class_radar(student_features: dict, class_df: pd.DataFrame) 
     return fig
 
 
-def plot_feature_violin_distribution(df: pd.DataFrame, feature_col: str) -> go.Figure:
-    """Renders a violin plot showing the distribution spread across performance classes."""
-    friendly_name = feature_col.replace("_", " ")
-    fig = px.violin(
-        df,
-        x="Performance_Category",
-        y=feature_col,
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        box=True,
-        points="outliers",
-        title=f"Distribution Spread of {friendly_name} by Category"
-    )
-    fig.update_layout(
-        xaxis_title="Performance Category",
-        yaxis_title=friendly_name,
-        showlegend=False,
-        template="plotly_white",
-        height=390
-    )
-    return fig
-
-
-def plot_assignments_vs_internals(df: pd.DataFrame) -> go.Figure:
-    """Renders bubble chart of Completed Assignments vs Assignment Score, sized by Internal Marks."""
-    fig = px.scatter(
-        df,
-        x="Completed_Assignments",
-        y="Assignment_Score",
-        size="Internal_Assessment_Marks",
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        hover_data=["Student_ID", "Attendance_Percentage"] if "Student_ID" in df.columns else None,
-        title="Assignments Completed vs Score (Bubble Size = Internal Marks)"
-    )
-    fig.update_layout(
-        xaxis_title="Assignments Completed (0 to 10)",
-        yaxis_title="Coursework Assignment Score (%)",
-        template="plotly_white",
-        height=400
-    )
-    return fig
-
-
-def plot_attendance_tiers_success_rate(df: pd.DataFrame) -> go.Figure:
-    """
-    Renders an intuitive 100% stacked bar chart showing how different attendance tiers
-    directly correspond to the likelihood of Low, Medium, or High performance.
-    """
-    df_temp = df.copy()
-
-    def get_tier(att):
-        if att < 60:
-            return "1. Critical (<60%)"
-        elif att < 75:
-            return "2. Warning (60-74%)"
-        elif att < 85:
-            return "3. Good (75-84%)"
-        else:
-            return "4. Excellent (≥85%)"
-
-    df_temp["Attendance_Tier"] = df_temp["Attendance_Percentage"].apply(get_tier)
-
-    tier_order = ["1. Critical (<60%)", "2. Warning (60-74%)", "3. Good (75-84%)", "4. Excellent (≥85%)"]
-    pivot = pd.crosstab(df_temp["Attendance_Tier"], df_temp["Performance_Category"], normalize="index") * 100
-    pivot = pivot.reindex(tier_order).fillna(0)
-
-    fig = go.Figure()
-    for cat in ["Low", "Medium", "High"]:
-        if cat in pivot.columns:
-            fig.add_trace(go.Bar(
-                name=f"{cat} Standing",
-                x=pivot.index,
-                y=pivot[cat].round(1),
-                text=pivot[cat].apply(lambda v: f"{v:.1f}%" if v > 3 else ""),
-                textposition="inside",
-                marker_color=CATEGORY_COLORS.get(cat, "#3b82f6")
-            ))
-
-    fig.update_layout(
-        barmode="stack",
-        title="Attendance Threshold vs Outcome Probability (100% Stacked)",
-        xaxis_title="Attendance Bracket",
-        yaxis_title="Proportion of Students (%)",
-        template="plotly_white",
-        height=380,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    return fig
-
-
-def plot_study_vs_attendance_quadrant(df: pd.DataFrame) -> go.Figure:
-    """
-    Renders a 4-Quadrant Scatter Plot of Weekly Study Hours vs Class Attendance.
-    Highlights the 4 distinct behavioral student profiles.
-    """
-    median_att = 75.0
-    median_study = 14.0
-
-    fig = px.scatter(
-        df,
-        x="Attendance_Percentage",
-        y="Study_Hours",
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        hover_data=["Student_ID", "Final_Score"] if "Student_ID" in df.columns else None,
-        title="Student Behavioral Quadrant (Attendance vs Weekly Study Hours)"
-    )
-
-    # Add quadrant dividing lines
-    fig.add_vline(x=median_att, line_dash="dash", line_color="#9ca3af", annotation_text="75% Attendance", annotation_position="top left")
-    fig.add_hline(y=median_study, line_dash="dash", line_color="#9ca3af", annotation_text="14 hrs Study", annotation_position="bottom right")
-
-    # Add Quadrant background annotations
-    fig.add_annotation(x=90, y=28, text="🌟 High Attendance & High Study", showarrow=False, font=dict(size=11, color="#15803d"))
-    fig.add_annotation(x=50, y=28, text="📖 Independent Study / Low Attendance", showarrow=False, font=dict(size=11, color="#854d0e"))
-    fig.add_annotation(x=90, y=6, text="🏫 Regular Attendance / Low Study", showarrow=False, font=dict(size=11, color="#1d4ed8"))
-    fig.add_annotation(x=50, y=6, text="⚠️ At-Risk Zone (Low Effort)", showarrow=False, font=dict(size=11, color="#b91c1c"))
-
-    fig.update_layout(
-        xaxis_title="Class Attendance Percentage (%)",
-        yaxis_title="Weekly Self-Study Hours (hrs)",
-        template="plotly_white",
-        height=450
-    )
-    return fig
-
-
-def plot_interactive_custom_explorer(df: pd.DataFrame, x_col: str, y_col: str) -> go.Figure:
-    """
-    Allows the user to select any two features and calculates Pearson correlation r dynamically.
-    """
-    x_clean = x_col.replace("_", " ")
-    y_clean = y_col.replace("_", " ")
-
-    fig = px.scatter(
-        df,
-        x=x_col,
-        y=y_col,
-        color="Performance_Category",
-        color_discrete_map=CATEGORY_COLORS,
-        trendline="ols" if STATSMODELS_AVAILABLE else None,
-        hover_data=["Student_ID"] if "Student_ID" in df.columns else None,
-        title=f"Custom Correlation Explorer: {x_clean} vs {y_clean}"
-    )
-
-    fig.update_layout(
-        xaxis_title=x_clean,
-        yaxis_title=y_clean,
-        template="plotly_white",
-        height=420
-    )
-    return fig
-
-
+# ============================================================================
+# BACKWARD-COMPATIBILITY ALIASES (Ensures no imports break)
+# ============================================================================
+plot_category_donut = plot_simple_cohort_donut
+plot_category_distribution = plot_simple_cohort_donut
+plot_attendance_tiers_success_rate = plot_attendance_pass_rate_bars
