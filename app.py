@@ -32,30 +32,146 @@ st.set_page_config(
 # Custom Styling
 st.markdown("""
 <style>
-    .main-title {
-        font-size: 2.2rem;
+    /* Global Font & App Styling */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Vibrant Hero Banners */
+    .hero-banner {
+        background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+        color: white;
+        padding: 24px 28px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.35);
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+    .hero-banner-icon {
+        font-size: 2.8rem;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 10px 16px;
+        border-radius: 14px;
+        backdrop-filter: blur(8px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .hero-banner h1 {
+        color: #ffffff !important;
+        font-size: 1.85rem !important;
+        font-weight: 800 !important;
+        margin: 0 0 6px 0 !important;
+        line-height: 1.2;
+    }
+    .hero-banner p {
+        color: #e0e7ff !important;
+        font-size: 0.98rem !important;
+        margin: 0 !important;
+        opacity: 0.95;
+    }
+
+    /* Metric Cards - Modern, Colorful & Elevated */
+    [data-testid="stMetric"] {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 16px 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        border-top: 4px solid #6366f1;
+    }
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -6px rgba(99, 102, 241, 0.2);
+        border-top-color: #4f46e5;
+    }
+    [data-testid="stMetricLabel"] {
+        font-weight: 700 !important;
+        color: #64748b !important;
+        font-size: 0.85rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    [data-testid="stMetricValue"] {
+        font-weight: 800 !important;
+        color: #1e1b4b !important;
+        font-size: 1.8rem !important;
+    }
+
+    /* Modern Gradient Buttons */
+    div.stButton > button:first-child {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white !important;
         font-weight: 700;
-        color: #1e3a8a;
-        margin-bottom: 0.2rem;
+        font-size: 0.95rem;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 22px;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        transition: all 0.2s ease;
     }
-    .sub-title {
-        font-size: 1.1rem;
-        color: #4b5563;
-        margin-bottom: 1.5rem;
+    div.stButton > button:first-child:hover {
+        background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+        transform: translateY(-2px);
     }
-    .metric-card {
-        background-color: #f8fafc;
-        border-radius: 8px;
-        padding: 16px;
-        border-left: 5px solid #3b82f6;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+    /* Sidebar Colorful Enhancement */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 60%, #0f172a 100%) !important;
     }
-    .status-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-weight: 600;
-        font-size: 0.9rem;
+    [data-testid="stSidebar"] * {
+        color: #f8fafc !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 9px 14px;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: all 0.2s ease;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
+        background: rgba(99, 102, 241, 0.28);
+        border-color: rgba(165, 180, 252, 0.4);
+        transform: translateX(4px);
+    }
+    [data-testid="stSidebar"] hr {
+        border-color: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    /* Info & Alert Boxes */
+    div[data-testid="stAlert"] {
+        border-radius: 12px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.03);
+    }
+
+    /* Expanders */
+    div[data-testid="stExpander"] {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+
+    /* Feature Cards */
+    .feature-card {
+        background: white;
+        padding: 20px;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        height: 100%;
+        transition: transform 0.2s ease;
+    }
+    .feature-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.06);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -111,8 +227,14 @@ def load_raw_data():
 init_database()
 
 # Sidebar Navigation
-st.sidebar.image("https://img.icons8.com/fluency/96/education.png", width=64)
-st.sidebar.title("🎓 Navigation")
+st.sidebar.markdown("""
+<div style="text-align: center; padding: 10px 0 16px 0;">
+    <div style="font-size: 3rem; margin-bottom: 4px;">🎓</div>
+    <div style="font-size: 1.25rem; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">EduPredict XAI</div>
+    <div style="font-size: 0.8rem; color: #a5b4fc; font-weight: 500;">Student Performance Intelligence</div>
+</div>
+""", unsafe_allow_html=True)
+
 page = st.sidebar.radio(
     "Select Module:",
     [
@@ -127,33 +249,78 @@ page = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(
-    "**Project**: TY B.Sc. Data Science  \n"
-    "**Models**: Random Forest & Logistic Reg.  \n"
-    "**XAI**: SHAP (Local & Global)  \n"
-    "**Database**: SQLite  \n"
-    "**Anti-Leakage**: Strictly Enforced"
-)
+st.sidebar.markdown("""
+<div style="background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 14px; border: 1px solid rgba(255, 255, 255, 0.12);">
+    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #818cf8; font-weight: 700; margin-bottom: 6px;">PROJECT INFO</div>
+    <div style="font-size: 0.88rem; font-weight: 600; color: #ffffff;">TY B.Sc. Data Science</div>
+    <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 4px;">Final Year Capstone 2026</div>
+    <div style="font-size: 0.8rem; color: #e2e8f0; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+        Author: <span style="color: #38bdf8; font-weight: 600;">Samruddhi Hole</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # -------------------------------------------------------------
 # PAGE 1: HOME / OVERVIEW
 # -------------------------------------------------------------
 if page == "1. Home / Overview":
-    st.markdown('<div class="main-title">🎓 Explainable Student Performance Prediction</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-title">A Decision-Support System Combining Predictive Machine Learning with Shapley Additive Explanations (SHAP)</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="hero-banner">
+        <div class="hero-banner-icon">🎓</div>
+        <div>
+            <h1>Explainable Student Performance Prediction</h1>
+            <p>AI-Powered Early Warning System & Teacher Mentoring Dashboard using Machine Learning & SHAP</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     clean_df = load_clean_data()
     raw_df = load_raw_data()
 
     with col1:
-        st.metric("Clean Records", f"{len(clean_df):,}" if clean_df is not None else "0")
+        st.metric("Validated Cohort", f"{len(clean_df):,} Students" if clean_df is not None else "0")
     with col2:
-        st.metric("Raw / Dirty Records", f"{len(raw_df):,}" if raw_df is not None else "0")
+        st.metric("Raw Dataset Size", f"{len(raw_df):,} Records" if raw_df is not None else "0")
     with col3:
-        st.metric("Primary ML Model", "Random Forest")
+        st.metric("Champion ML Model", "Random Forest (81.3%)")
     with col4:
-        st.metric("Explainability Framework", "SHAP XAI")
+        st.metric("Explainability Engine", "SHAP XAI (Game Theory)")
+
+    st.markdown("---")
+
+    # 3 Colorful Feature Highlight Cards
+    c_card1, c_card2, c_card3 = st.columns(3)
+    with c_card1:
+        st.markdown("""
+        <div class="feature-card" style="border-top: 4px solid #10b981;">
+            <div style="font-size: 1.8rem; margin-bottom: 8px;">🌲</div>
+            <h4 style="color: #065f46; margin: 0 0 8px 0; font-weight: 700;">Random Forest Classifier</h4>
+            <p style="color: #475569; font-size: 0.92rem; margin: 0; line-height: 1.5;">
+                <b>81.25% Multiclass Accuracy</b>. An ensemble of 100 decision trees that accurately spots at-risk students with <b>zero dangerous mistakes</b>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with c_card2:
+        st.markdown("""
+        <div class="feature-card" style="border-top: 4px solid #3b82f6;">
+            <div style="font-size: 1.8rem; margin-bottom: 8px;">🔍</div>
+            <h4 style="color: #1e40af; margin: 0 0 8px 0; font-weight: 700;">Explainable AI (SHAP)</h4>
+            <p style="color: #475569; font-size: 0.92rem; margin: 0; line-height: 1.5;">
+                <b>Nobel Prize Game Theory</b>. Breaks open the AI black box to tell teachers the exact reasons why a student passed or struggled.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with c_card3:
+        st.markdown("""
+        <div class="feature-card" style="border-top: 4px solid #f59e0b;">
+            <div style="font-size: 1.8rem; margin-bottom: 8px;">🛡️</div>
+            <h4 style="color: #92400e; margin: 0 0 8px 0; font-weight: 700;">Zero Data Leakage</h4>
+            <p style="color: #475569; font-size: 0.92rem; margin: 0; line-height: 1.5;">
+                <b>Strict Scientific Validation</b>. Final scores are strictly excluded during training, ensuring genuine real-world predictive validity.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -171,27 +338,26 @@ if page == "1. Home / Overview":
     [ Raw Student Dataset ] ──▶ [ Automated Cleaning Pipeline ] ──▶ [ Feature Selection (No Leakage) ]
                                             │                                      │
                                             ▼                                      ▼
-                                [ 5 Visual EDA Charts ]               [ Train/Test Split (80/20) ]
+                                [ 4 Visual EDA Charts ]               [ Train/Test Split (80/20) ]
                                                                                    │
                                                                                    ▼
     [ SQLite Database ] ◀── [ Interactive Streamlit ] ◀── [ SHAP XAI Engine ] ◀── [ RF & LogReg Models ]
     ```
     """)
 
-    st.markdown("### 🛡️ Critical Anti-Data-Leakage Guarantee")
-    st.info(
-        "**Strict Causal Boundary**: `Final_Score` and `Performance_Category` are ground truth targets and are "
-        "**never** provided to the machine learning models during training or inference. Only prior indicators "
-        "(Attendance, Study Hours, Previous Semester Marks, Coursework Scores, Internal Marks, and Participation) "
-        "are utilized to ensure valid decision support."
-    )
-
 # -------------------------------------------------------------
 # PAGE 2: DATA UPLOAD & CLEANING
 # -------------------------------------------------------------
 elif page == "2. Data Upload & Cleaning":
-    st.title("🧹 Data Upload & Automated Cleaning Pipeline")
-    st.write("Demonstrates genuine data validation, duplicate removal, missing value imputation, and out-of-bounds detection.")
+    st.markdown("""
+    <div class="hero-banner" style="background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%);">
+        <div class="hero-banner-icon">🧹</div>
+        <div>
+            <h1>Data Upload & Automated Cleaning Pipeline</h1>
+            <p>Real-time data validation, missing value imputation, duplicate removal, and outlier detection</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     source_option = st.radio(
         "Choose Data Source:",
@@ -259,8 +425,15 @@ elif page == "2. Data Upload & Cleaning":
 # PAGE 3: EXPLORATORY DATA ANALYSIS (EDA)
 # -------------------------------------------------------------
 elif page == "3. Exploratory Data Analysis":
-    st.title("📊 Student Performance Insights & Key Trends")
-    st.write("A clean, visual overview of student achievements and the primary drivers of academic performance.")
+    st.markdown("""
+    <div class="hero-banner" style="background: linear-gradient(135deg, #059669 0%, #10b981 50%, #14b8a6 100%);">
+        <div class="hero-banner-icon">📊</div>
+        <div>
+            <h1>Student Performance Insights & Key Trends</h1>
+            <p>A clean, visual overview of student achievements and the primary drivers of academic performance</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     clean_df = load_clean_data()
     if clean_df is None:
@@ -316,11 +489,15 @@ elif page == "3. Exploratory Data Analysis":
 # PAGE 4: MODEL EVALUATION & COMPARISON
 # -------------------------------------------------------------
 elif page == "4. Model Evaluation & Comparison":
-    st.title("⚖️ Model Evaluation & Accuracy Comparison")
-    st.write(
-        "To find the most reliable algorithm, we trained and benchmarked **3 distinct Machine Learning models** "
-        "on **192 unseen test students** (20% holdout test set)."
-    )
+    st.markdown("""
+    <div class="hero-banner" style="background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #f97316 100%);">
+        <div class="hero-banner-icon">⚖️</div>
+        <div>
+            <h1>Model Evaluation & Accuracy Leaderboard</h1>
+            <p>Benchmarking 3 Machine Learning algorithms on 192 unseen test students to select the champion model</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     artifacts = load_model_artifacts()
     metrics = artifacts.get("metrics")
@@ -453,8 +630,15 @@ elif page == "4. Model Evaluation & Comparison":
 # PAGE 5: STUDENT PERFORMANCE PREDICTION
 # -------------------------------------------------------------
 elif page == "5. Student Prediction":
-    st.title("🔮 Student Performance Prediction")
-    st.write("Generate real-time predictions and academic risk indicators for an individual student profile.")
+    st.markdown("""
+    <div class="hero-banner" style="background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #ec4899 100%);">
+        <div class="hero-banner-icon">🔮</div>
+        <div>
+            <h1>Student Performance Prediction Portal</h1>
+            <p>Real-time machine learning prediction, confidence gauge, and 360° academic profile assessment</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     pred_service = get_prediction_service()
     if not pred_service.is_ready():
@@ -601,12 +785,15 @@ elif page == "5. Student Prediction":
 # PAGE 6: SHAP EXPLAINABILITY
 # -------------------------------------------------------------
 elif page == "6. SHAP Explainability":
-    st.title("🔍 Explainable AI (SHAP & Mentoring Insights)")
-    st.write(
-        "Traditional Machine Learning models are often criticized as **black boxes**. "
-        "Here, **SHAP (SHapley Additive exPlanations)** mathematically unpacks the model to show teachers "
-        "exactly **why** a student received their specific grade."
-    )
+    st.markdown("""
+    <div class="hero-banner" style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #10b981 100%);">
+        <div class="hero-banner-icon">🔍</div>
+        <div>
+            <h1>Explainable AI (SHAP & Mentoring Insights)</h1>
+            <p>Opening the machine learning black box to reveal exactly which student habits helped or hurt their grades</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     explainer_service = get_explainer_service()
 
@@ -791,8 +978,15 @@ elif page == "6. SHAP Explainability":
 # PAGE 7: PREDICTION HISTORY (SQLITE)
 # -------------------------------------------------------------
 elif page == "7. Prediction History (SQLite)":
-    st.title("🗄️ Prediction History & Audit Ledger")
-    st.write("Locally stored prediction audit records stored inside SQLite (`database/student_performance.db`).")
+    st.markdown("""
+    <div class="hero-banner" style="background: linear-gradient(135deg, #334155 0%, #475569 50%, #1e293b 100%);">
+        <div class="hero-banner-icon">🗄️</div>
+        <div>
+            <h1>Prediction History & SQLite Audit Ledger</h1>
+            <p>Locally stored prediction audit records and CSV export for institutional reporting</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     history_df = get_predictions_history(limit=200)
 
